@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Poids</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --text: #111111;
+    --text-secondary: #666666;
+    --text-muted: #999999;
+    --border: #e5e5e5;
+    --success: #1d9e75;
+    --accent: #185fa5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #111111;
+      --text: #f5f5f5;
+      --text-secondary: #aaaaaa;
+      --text-muted: #777777;
+      --border: #333333;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 24px 16px 60px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  .wrap { max-width: 900px; margin: 0 auto; }
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    border-bottom: 2px solid var(--text);
+    padding-bottom: 12px;
+    margin-bottom: 24px;
+  }
+  .label {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+  }
+  .card {
+    border: 0.5px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 16px;
+  }
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .stat {
+    background: color-mix(in srgb, var(--border) 30%, transparent);
+    border-radius: 8px;
+    padding: 1rem;
+  }
+  .stat .label { margin-bottom: 6px; }
+  .stat .value { font-size: 24px; font-weight: 500; }
+  .stat .unit { font-size: 13px; color: var(--text-muted); font-weight: 400; }
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  @media (max-width: 600px) {
+    .two-col { grid-template-columns: 1fr; }
+  }
+  svg { width: 100%; height: 100px; display: block; }
+  .add-form {
+    border-top: 0.5px solid var(--border);
+    margin-top: 12px;
+    padding-top: 16px;
+    display: flex;
+    gap: 8px;
+  }
+  input, button {
+    font-family: inherit;
+    font-size: 14px;
+    padding: 8px 10px;
+    border: 0.5px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg);
+    color: var(--text);
+  }
+  input[type="date"] { flex: 1; }
+  input[type="number"] { width: 100px; }
+  button {
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  button:hover { background: color-mix(in srgb, var(--border) 40%, transparent); }
+  .exo-row {
+    font-size: 13px;
+    padding: 8px 0;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .exo-row:last-child { border-bottom: none; }
+  .exo-row .name { font-weight: 500; margin-bottom: 3px; }
+  .exo-row .reps { color: var(--text-secondary); line-height: 1.4; }
+  .kcal {
+    border-top: 0.5px solid var(--border);
+    margin-top: 12px;
+    padding-top: 8px;
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+  .meal-block { margin-bottom: 10px; }
+  .meal-block:last-child { margin-bottom: 0; }
+  .meal-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 2px;
+  }
+  .meal-value { font-size: 14px; color: var(--text-secondary); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <span class="label">Dashboard poids</span>
+    <span class="label" id="today-date"></span>
+  </header>
+
+  <div class="card">
+    <div class="label" style="margin-bottom:12px;">Suivi du poids</div>
+    <div class="stats-grid">
+      <div class="stat">
+        <div class="label">Actuel</div>
+        <div class="value" id="stat-current">— <span class="unit">kg</span></div>
+      </div>
+      <div class="stat">
+        <div class="label">7 jours</div>
+        <div class="value" id="stat-week">— <span class="unit">kg</span></div>
+      </div>
+      <div class="stat">
+        <div class="label">Objectif</div>
+        <div class="value">75.0 <span class="unit">kg</span></div>
+      </div>
+    </div>
+    <svg id="chart" viewBox="0 0 600 100"></svg>
+    <form class="add-form" id="add-form">
+      <input type="date" id="input-date" required>
+      <input type="number" id="input-weight" placeholder="82.4" step="0.1" required>
+      <button type="submit">Ajouter</button>
+    </form>
+  </div>
+
+  <div class="two-col">
+    <div class="card">
+      <div class="label" id="bigg-title" style="margin-bottom:10px;">Séance du jour</div>
+      <div id="bigg-content"></div>
+    </div>
+
+    <div class="card">
+      <div class="label" style="margin-bottom:10px;">Recette du jour</div>
+      <div class="meal-block">
+        <div class="meal-label">Petit-déj</div>
+        <div class="meal-value">À définir ensemble</div>
+      </div>
+      <div class="meal-block">
+        <div class="meal-label">Déjeuner</div>
+        <div class="meal-value">À définir ensemble</div>
+      </div>
+      <div class="meal-block">
+        <div class="meal-label">Dîner</div>
+        <div class="meal-value">À définir ensemble</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  const SUPABASE_URL = "https://jjqkftvsjnunyoiultmw.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_xOtpGgNxWo01uHUc12oaZQ_xCXjIEER";
+  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  // ---- Date du jour ----
+  const today = new Date();
+  document.getElementById("today-date").textContent = today.toLocaleDateString("fr-FR", {
+    weekday: "long", day: "numeric", month: "long"
+  });
+  document.getElementById("input-date").value = today.toISOString().slice(0, 10);
+
+  // ---- Programme BIGG (à personnaliser : remplis tes vrais blocs/exercices ici) ----
+  const BIGG = {
+    1: { // Lundi
+      title: "Hamstring",
+      kcal: 380,
+      blocks: [
+        { name: "Strength — Lower accessory 8'", reps: "3 rounds: Banded Glute Bridge Abduction (15), SKB Single-Leg Hip Thrust (10/10), Banded Good Morning (12)" },
+        { name: "Strength Barbell — 12'", reps: "Glute Bridge Hold + Abductions, Good Morning, puis Barbell Deadlift 3x6 + 2x5, AMRAP SKB Single-Leg RDL + KB Sumo Deadlift" },
+        { name: "HRX Training — AMRAP 12'", reps: "Wall Ball (10), Box Jumps (10), Machine 40\", Toes to Bar (10), DDB Thruster (10), DDB Devil Clean (10), Machine 40\"" },
+        { name: "Midline — AMRAP 8'", reps: "Bumper Russian Twists (10), Plank Bumper Drag (8/8), MB Hollow Rock (12)" }
+      ]
+    },
+    2: { // Mardi
+      title: "Dos",
+      kcal: 360,
+      blocks: [
+        { name: "Traditional Hypertrophy — Push accessory 6'", reps: "2 rounds: DDB Lateral Flys (12), DDB Front Flys (10), DDB Reverse Flys (10)" },
+        { name: "Strength — Upper strong 14'", reps: "Front Step + Thoracic Rotation, Superman Hold, puis Weighted Strict Pull Ups 3x6 + 2x5, AMRAP TRX Face Pull + DDB Incline Hammer Biceps Curls" },
+        { name: "Traditional Hypertrophy — Upper accessory 14'", reps: "4 rounds: DKB Z-Press (10), DKB High Pull (10), Seated DDB Reverse Flys (12)" },
+        { name: "Midline — Asymmetry AMRAP 6'", reps: "Lateral V-Sit Ups (10), KB Russian Twist (12), Banded Dead Bug (10)" }
+      ]
+    },
+    3: { // Mercredi
+      title: "Épaules / Fessiers",
+      kcal: 390,
+      blocks: [
+        { name: "BIGGinners — Lower strong AMRAP 8'", reps: "Goblet Sumo Squat (10), DDB Front Rack Lunges (8/8), Single-Leg Glute Bridge (10/10)" },
+        { name: "Strength Barbell — 12'", reps: "Glute Bridge Hold + Abductions, Banded Clamshell, puis Barbell Hip Thrust 3x6 + 2x5, AMRAP KB Sumo Deadlift + Platform Deficit Lateral Lunges" },
+        { name: "Strength — Upper strong 12'", reps: "TRX Face Pull, Quadruped Shoulder Taps, puis Barbell Shoulder Press 3x6 + 2x5, AMRAP Seated DDB Arnold Press + SKB Overhead Triceps Extensions" },
+        { name: "Combined Strength — Finisher AMRAP 8'", reps: "Goblet Thrusters (8), DKB Devil Clean (5), DDB Thrusters (6)" }
+      ]
+    },
+    4: { // Jeudi
+      title: "Jambes",
+      kcal: 420,
+      blocks: [
+        { name: "Strength — Lower accessory 7'", reps: "3 rounds: Goblet Lateral Box Step Up (8/8), Goblet Lateral Lunges (10/10), Banded Reverse Lunges + Squat (10/10)" },
+        { name: "Strength Barbell — 13'", reps: "Banded Wall Squat Hold + Abduction, Banded Squat + Lateral Leg Raises, puis DKB Farmer Bulgarian Squat 3x3/3 + 2x2/2, AMRAP Goblet Bulgarian Squat Jump + DKB Split Stance Deadlift" },
+        { name: "HIIT — Speed power 30\"on/30\"off 13'", reps: "SKB Single-Arm Swing (1'), Goblet Cossacks (2'), DKB Renegade Rows (3'), Goblet Squat Jump (1')" },
+        { name: "HIIT — Bodyweight 30\"on/30\"off 7'", reps: "Mountain Climbers (1'), Tuck Jumps (2'), Jumping Jacks (3'), Squat Jump + Lateral Lunges (1')" }
+      ]
+    },
+    5: { // Vendredi
+      title: "Poitrine",
+      kcal: 370,
+      blocks: [
+        { name: "Traditional Hypertrophy — Push accessory 6'", reps: "4 rounds: DDB Chest Press (10), Push Up Hold (5\"), Push Ups (10)" },
+        { name: "Traditional Hypertrophy — Complete 13'", reps: "3 rounds: DDB Incline Press (12-10-10), DDB Chest Flys (12-12-12), DDB Opener Chest (12/12)" },
+        { name: "Full Body Hypertrophy — Upper body 12'", reps: "4 rounds: Barbell Bench Press (10), Tempo Barbell Bench Press Down (5), DDB Chest Flys (15), Push Up Hold (10\")" },
+        { name: "Full Body — Finisher 7'", reps: "5 rounds: Sprawls (4), Jumping Jacks (20), Jumping Squats (4)" }
+      ]
+    },
+    6: { title: "Marche", kcal: 150, blocks: [{ name: "Marche active", reps: "Quelques kilomètres" }] }, // Samedi
+    0: { title: "Repos", kcal: null, blocks: [] } // Dimanche
+  };
+
+  function renderBigg() {
+    const day = today.getDay();
+    const prog = BIGG[day];
+    document.getElementById("bigg-title").textContent = "Séance du jour · " + prog.title;
+    const container = document.getElementById("bigg-content");
+    container.innerHTML = "";
+    prog.blocks.forEach(b => {
+      const row = document.createElement("div");
+      row.className = "exo-row";
+      row.innerHTML = `<div class="name">${b.name}</div><div class="reps">${b.reps}</div>`;
+      container.appendChild(row);
+    });
+    if (prog.kcal) {
+      const kcalDiv = document.createElement("div");
+      kcalDiv.className = "kcal";
+      kcalDiv.textContent = `~ ${prog.kcal} kcal estimées`;
+      container.appendChild(kcalDiv);
+    }
+  }
+  renderBigg();
+
+  // ---- Poids : chargement, stats, graphique ----
+  async function loadWeights() {
+    const { data, error } = await sb
+      .from("weights")
+      .select("date, weight")
+      .order("date", { ascending: true });
+    if (error) {
+      console.error("Erreur chargement poids:", error);
+      return;
+    }
+    renderStats(data);
+    renderChart(data);
+  }
+
+  function renderStats(data) {
+    if (!data.length) return;
+    const current = data[data.length - 1].weight;
+    document.getElementById("stat-current").innerHTML = `${current.toFixed(1)} <span class="unit">kg</span>`;
+
+    const weekAgoDate = new Date(today);
+    weekAgoDate.setDate(weekAgoDate.getDate() - 7);
+    const pastPoint = [...data].reverse().find(d => new Date(d.date) <= weekAgoDate);
+
+    const weekEl = document.getElementById("stat-week");
+    if (pastPoint) {
+      const diff = current - pastPoint.weight;
+      const sign = diff > 0 ? "+" : "";
+      weekEl.innerHTML = `${sign}${diff.toFixed(1)} <span class="unit">kg</span>`;
+      weekEl.style.color = diff <= 0 ? "var(--success)" : "var(--text)";
+    } else {
+      weekEl.innerHTML = `— <span class="unit">kg</span>`;
+    }
+  }
+
+  function renderChart(data) {
+    const svg = document.getElementById("chart");
+    if (data.length < 2) {
+      svg.innerHTML = "";
+      return;
+    }
+    const weights = data.map(d => d.weight);
+    const min = Math.min(...weights);
+    const max = Math.max(...weights);
+    const range = max - min || 1;
+    const w = 600, h = 100, pad = 10;
+    const points = data.map((d, i) => {
+      const x = (i / (data.length - 1)) * w;
+      const y = h - pad - ((d.weight - min) / range) * (h - 2 * pad);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(" ");
+    svg.innerHTML = `<polyline points="${points}" fill="none" stroke="var(--accent)" stroke-width="2"/>`;
+  }
+
+  // ---- Ajout d'une pesée ----
+  document.getElementById("add-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const date = document.getElementById("input-date").value;
+    const weight = parseFloat(document.getElementById("input-weight").value);
+    if (!date || isNaN(weight)) return;
+
+    const { error } = await sb
+      .from("weights")
+      .upsert({ date, weight }, { onConflict: "date" });
+
+    if (error) {
+      console.error("Erreur ajout:", error);
+      alert("Erreur lors de l'ajout, regarde la console.");
+      return;
+    }
+    document.getElementById("input-weight").value = "";
+    loadWeights();
+  });
+
+  loadWeights();
+</script>
+</body>
+</html>
