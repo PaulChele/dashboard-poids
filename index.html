@@ -12,6 +12,7 @@
     --text-muted: #999999;
     --border: #e5e5e5;
     --success: #1d9e75;
+    --danger: #d85a30;
     --accent: #185fa5;
   }
   @media (prefers-color-scheme: dark) {
@@ -36,7 +37,7 @@
     display: flex;
     justify-content: space-between;
     align-items: baseline;
-    border-bottom: 2px solid var(--text);
+    border-bottom: 2px solid var(--accent);
     padding-bottom: 12px;
     margin-bottom: 24px;
   }
@@ -60,9 +61,14 @@
   }
   .stat {
     background: color-mix(in srgb, var(--border) 30%, transparent);
+    border-left: 3px solid var(--stat-color, var(--border));
     border-radius: 8px;
     padding: 1rem;
   }
+  .stat.c-accent { --stat-color: var(--accent); }
+  .stat.c-success { --stat-color: var(--success); }
+  .stat.c-danger { --stat-color: var(--danger); }
+  .stat.c-muted { --stat-color: var(--text-muted); }
   .stat .label { margin-bottom: 6px; }
   .stat .value { font-size: 24px; font-weight: 500; }
   .stat .unit { font-size: 13px; color: var(--text-muted); font-weight: 400; }
@@ -74,7 +80,33 @@
   @media (max-width: 600px) {
     .two-col { grid-template-columns: 1fr; }
   }
-  svg { width: 100%; height: 100px; display: block; }
+  .delta { font-size: 12px; margin-top: 4px; color: var(--text-secondary); }
+  .progress-wrap { margin-top: 16px; }
+  .progress-track {
+    height: 8px;
+    border-radius: 4px;
+    background: var(--border);
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 4px;
+    transition: width 0.3s;
+  }
+  .progress-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 6px;
+  }
+  svg { width: 100%; height: 100px; display: block; overflow: visible; }
+  svg circle {
+    transition: r 0.15s;
+    cursor: pointer;
+  }
+  svg circle:hover { r: 6; }
   .add-form {
     border-top: 0.5px solid var(--border);
     margin-top: 12px;
@@ -135,20 +167,31 @@
   <div class="card">
     <div class="label" style="margin-bottom:12px;">Suivi du poids</div>
     <div class="stats-grid">
-      <div class="stat">
+      <div class="stat c-accent">
         <div class="label">Actuel</div>
         <div class="value" id="stat-current">— <span class="unit">kg</span></div>
+        <div class="delta" id="stat-week-delta"></div>
       </div>
-      <div class="stat">
-        <div class="label">7 jours</div>
-        <div class="value" id="stat-week">— <span class="unit">kg</span></div>
+      <div class="stat c-muted" id="stat-remaining-card">
+        <div class="label">Restant</div>
+        <div class="value" id="stat-remaining">— <span class="unit">kg</span></div>
       </div>
-      <div class="stat">
+      <div class="stat c-muted">
         <div class="label">Objectif</div>
         <div class="value">75.0 <span class="unit">kg</span></div>
       </div>
     </div>
     <svg id="chart" viewBox="0 0 600 100"></svg>
+    <div class="progress-wrap">
+      <div class="progress-track">
+        <div class="progress-fill" id="progress-fill"></div>
+      </div>
+      <div class="progress-labels">
+        <span id="progress-start"></span>
+        <span id="progress-pct" class="label"></span>
+        <span>75 kg</span>
+      </div>
+    </div>
     <form class="add-form" id="add-form">
       <input type="date" id="input-date" required>
       <input type="number" id="input-weight" placeholder="82.4" step="0.1" required>
@@ -285,24 +328,44 @@
     renderChart(data);
   }
 
+  const GOAL = 75.0;
+
   function renderStats(data) {
     if (!data.length) return;
     const current = data[data.length - 1].weight;
+    const startWeight = data[0].weight;
     document.getElementById("stat-current").innerHTML = `${current.toFixed(1)} <span class="unit">kg</span>`;
 
+    // Restant vers objectif
+    const remaining = current - GOAL;
+    const remainCard = document.getElementById("stat-remaining-card");
+    document.getElementById("stat-remaining").innerHTML =
+      remaining <= 0
+        ? `Atteint <span class="unit">🎯</span>`
+        : `${remaining.toFixed(1)} <span class="unit">kg</span>`;
+    remainCard.className = "stat " + (remaining <= 0 ? "c-success" : "c-accent");
+
+    // Delta 7 jours (affiché en petit sous "Actuel")
     const weekAgoDate = new Date(today);
     weekAgoDate.setDate(weekAgoDate.getDate() - 7);
     const pastPoint = [...data].reverse().find(d => new Date(d.date) <= weekAgoDate);
-
-    const weekEl = document.getElementById("stat-week");
+    const deltaEl = document.getElementById("stat-week-delta");
     if (pastPoint) {
       const diff = current - pastPoint.weight;
       const sign = diff > 0 ? "+" : "";
-      weekEl.innerHTML = `${sign}${diff.toFixed(1)} <span class="unit">kg</span>`;
-      weekEl.style.color = diff <= 0 ? "var(--success)" : "var(--text)";
+      deltaEl.textContent = `${sign}${diff.toFixed(1)} kg sur 7 jours`;
+      deltaEl.style.color = diff <= 0 ? "var(--success)" : "var(--danger)";
     } else {
-      weekEl.innerHTML = `— <span class="unit">kg</span>`;
+      deltaEl.textContent = "";
     }
+
+    // Barre de progression : première pesée enregistrée → objectif
+    const totalToLose = startWeight - GOAL;
+    const doneSoFar = startWeight - current;
+    const pct = totalToLose > 0 ? Math.max(0, Math.min(100, (doneSoFar / totalToLose) * 100)) : 100;
+    document.getElementById("progress-fill").style.width = pct.toFixed(0) + "%";
+    document.getElementById("progress-start").textContent = `${startWeight.toFixed(1)} kg`;
+    document.getElementById("progress-pct").textContent = `${pct.toFixed(0)}%`;
   }
 
   function renderChart(data) {
@@ -316,12 +379,25 @@
     const max = Math.max(...weights);
     const range = max - min || 1;
     const w = 600, h = 100, pad = 10;
-    const points = data.map((d, i) => {
+    const coords = data.map((d, i) => {
       const x = (i / (data.length - 1)) * w;
       const y = h - pad - ((d.weight - min) / range) * (h - 2 * pad);
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    }).join(" ");
-    svg.innerHTML = `<polyline points="${points}" fill="none" stroke="var(--accent)" stroke-width="2"/>`;
+      return { x, y, date: d.date, weight: d.weight };
+    });
+    const linePoints = coords.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+    const areaPoints = `0,${h} ` + linePoints + ` ${w},${h}`;
+
+    const dateFmt = (iso) => new Date(iso + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
+
+    let circles = coords.map(p => `
+      <circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3.5" fill="var(--accent)">
+        <title>${dateFmt(p.date)} — ${p.weight.toFixed(1)} kg</title>
+      </circle>`).join("");
+
+    svg.innerHTML = `
+      <polygon points="${areaPoints}" fill="color-mix(in srgb, var(--accent) 12%, transparent)" stroke="none"/>
+      <polyline points="${linePoints}" fill="none" stroke="var(--accent)" stroke-width="2"/>
+      ${circles}`;
   }
 
   // ---- Ajout d'une pesée ----
