@@ -145,15 +145,36 @@
     font-size: 13px;
     color: var(--text-secondary);
   }
-  .meal-block { margin-bottom: 10px; }
-  .meal-block:last-child { margin-bottom: 0; }
+  .meal-block {
+    padding: 8px 0;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .meal-block:last-child { border-bottom: none; }
+  .meal-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 4px;
+  }
   .meal-label {
     font-size: 11px;
     text-transform: uppercase;
+    letter-spacing: 0.04em;
     color: var(--text-muted);
-    margin-bottom: 2px;
   }
-  .meal-value { font-size: 14px; color: var(--text-secondary); }
+  .meal-time {
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-weight: 500;
+  }
+  .meal-items { font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
+  .meal-total {
+    border-top: 0.5px solid var(--border);
+    margin-top: 8px;
+    padding-top: 8px;
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
 </style>
 </head>
 <body>
@@ -206,19 +227,8 @@
     </div>
 
     <div class="card">
-      <div class="label" style="margin-bottom:10px;">Recette du jour</div>
-      <div class="meal-block">
-        <div class="meal-label">Petit-déj</div>
-        <div class="meal-value">À définir ensemble</div>
-      </div>
-      <div class="meal-block">
-        <div class="meal-label">Déjeuner</div>
-        <div class="meal-value">À définir ensemble</div>
-      </div>
-      <div class="meal-block">
-        <div class="meal-label">Dîner</div>
-        <div class="meal-value">À définir ensemble</div>
-      </div>
+      <div class="label" id="recette-title" style="margin-bottom:10px;">Recette du jour</div>
+      <div id="recette-content"></div>
     </div>
   </div>
 
@@ -313,6 +323,74 @@
     }
   }
   renderBigg();
+
+  // ---- Programme repas (protéines + fruits + peu de légumes, cible ~79kg déc. 2026) ----
+  const MEALS = {
+    1: { kcal: 1850, protein: 190, meals: [
+      { time: "8h00", label: "Petit-déj", items: ["Yaourt grec 0% — 300g", "Fraises — 150g", "Amandes — 20g"] },
+      { time: "14h00", label: "Déjeuner", items: ["Œufs entiers — 3 (≈150g)", "Avocat — ½ (≈100g)", "Poulet grillé — 150g", "Carotte + concombre — 100g"] },
+      { time: "17h30", label: "Collation", items: ["Whey (poudre) — 30g", "Banane — 120g"] },
+      { time: "21h00", label: "Dîner", items: ["Poulet — 180g", "Champignons — 100g", "Riz cru — 70g", "Poire — 100g"] }
+    ]},
+    2: { kcal: 1900, protein: 185, meals: [
+      { time: "8h00", label: "Petit-déj", items: ["Yaourt grec 0% — 300g", "Framboises — 150g", "Amandes — 20g"] },
+      { time: "14h00", label: "Déjeuner", items: ["Œufs entiers — 3", "Avocat — ½", "Poulet grillé — 150g", "Carotte + concombre — 100g"] },
+      { time: "17h30", label: "Collation", items: ["Whey (poudre) — 30g", "Banane — 120g"] },
+      { time: "21h00", label: "Dîner", items: ["Bœuf haché 5% MG — 180g", "Champignons — 100g", "Riz cru — 70g", "Pomme — 100g"] }
+    ]},
+    3: { kcal: 1850, protein: 190, meals: [
+      { time: "8h00", label: "Petit-déj", items: ["Yaourt grec 0% — 300g", "Kiwi — 2 (≈150g)", "Amandes — 20g"] },
+      { time: "14h00", label: "Déjeuner", items: ["Œufs entiers — 3", "Avocat — ½", "Poulet grillé — 150g", "Carotte + concombre — 100g"] },
+      { time: "17h30", label: "Collation", items: ["Whey (poudre) — 30g", "Banane — 120g"] },
+      { time: "21h00", label: "Dîner", items: ["Poulet — 180g", "Champignons — 100g", "Riz cru — 70g", "Fraises — 100g"] }
+    ]},
+    4: { kcal: 1900, protein: 185, meals: [
+      { time: "8h00", label: "Petit-déj", items: ["Yaourt grec 0% — 300g", "Pomme — 150g", "Amandes — 20g"] },
+      { time: "14h00", label: "Déjeuner", items: ["Œufs entiers — 3", "Avocat — ½", "Poulet grillé — 150g", "Carotte + concombre — 100g"] },
+      { time: "17h30", label: "Collation", items: ["Whey (poudre) — 30g", "Banane — 120g"] },
+      { time: "21h00", label: "Dîner", items: ["Bœuf haché 5% MG — 180g", "Champignons — 100g", "Riz cru — 70g", "Framboises — 100g"] }
+    ]},
+    5: { kcal: 1850, protein: 190, meals: [
+      { time: "8h00", label: "Petit-déj", items: ["Yaourt grec 0% — 300g", "Poire — 150g", "Amandes — 20g"] },
+      { time: "14h00", label: "Déjeuner", items: ["Œufs entiers — 3", "Avocat — ½", "Poulet grillé — 150g", "Carotte + concombre — 100g"] },
+      { time: "17h30", label: "Collation", items: ["Whey (poudre) — 30g", "Banane — 120g"] },
+      { time: "21h00", label: "Dîner", items: ["Poulet — 180g", "Champignons — 100g", "Riz cru — 70g", "Kiwi — 2 (≈150g)"] }
+    ]},
+    6: { kcal: 1700, protein: 170, meals: [
+      { time: "8h00", label: "Petit-déj", items: ["Yaourt grec 0% — 300g", "Fraises — 150g", "Amandes — 20g"] },
+      { time: "14h00", label: "Déjeuner", items: ["Œufs entiers — 3", "Avocat — ½", "Poulet grillé — 150g", "Carotte + concombre — 100g"] },
+      { time: "17h30", label: "Collation", items: ["Whey (poudre) — 20g (dose allégée)", "Pomme — 100g"] },
+      { time: "21h00", label: "Dîner", items: ["Bœuf haché 5% MG — 160g", "Champignons — 100g", "Riz cru — 60g"] }
+    ]},
+    0: { kcal: 1550, protein: 160, meals: [
+      { time: "8h00", label: "Petit-déj", items: ["Yaourt grec 0% — 300g", "Framboises — 150g", "Amandes — 20g"] },
+      { time: "14h00", label: "Déjeuner", items: ["Œufs entiers — 3", "Avocat — ½", "Poulet grillé — 150g", "Carotte + concombre — 100g"] },
+      { time: "21h00", label: "Dîner", items: ["Poulet — 160g", "Champignons — 100g", "Riz cru — 60g", "Poire — 100g"] }
+    ]}
+  };
+
+  function renderRecette() {
+    const day = today.getDay();
+    const prog = MEALS[day];
+    const container = document.getElementById("recette-content");
+    container.innerHTML = "";
+    prog.meals.forEach(m => {
+      const block = document.createElement("div");
+      block.className = "meal-block";
+      block.innerHTML = `
+        <div class="meal-head">
+          <span class="meal-label">${m.label}</span>
+          <span class="meal-time">${m.time}</span>
+        </div>
+        <div class="meal-items">${m.items.join(" · ")}</div>`;
+      container.appendChild(block);
+    });
+    const totalDiv = document.createElement("div");
+    totalDiv.className = "meal-total";
+    totalDiv.textContent = `~ ${prog.kcal} kcal · ~ ${prog.protein}g protéines`;
+    container.appendChild(totalDiv);
+  }
+  renderRecette();
 
   // ---- Poids : chargement, stats, graphique ----
   async function loadWeights() {
